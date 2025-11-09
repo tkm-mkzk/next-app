@@ -103,6 +103,22 @@ export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => 
 		}
 	}
 
+	const allSubjects = useMemo(() => {
+		const subjectSet = new Set<string>()
+		initialData.forEach((data) => {
+			data.grades.forEach((grade) => {
+				subjectSet.add(grade.subject)
+			})
+		})
+
+		return Array.from(subjectSet).sort()
+	}, [initialData])
+
+	const getSubjectScore = (grades: Grade[], subject: string): number | null => {
+		const grade = grades.find((grade) => grade.subject === subject)
+		return grade ? grade.score : null
+	}
+
 	return (
 		<div className={styles.container}>
 			<h1>生徒成績ダッシュボード</h1>
@@ -122,6 +138,9 @@ export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => 
 						<th onClick={() => handleSort('name')}>名前{getSortIcon('name')}</th>
 						<th onClick={() => handleSort('grade')}>学年{getSortIcon('grade')}</th>
 						<th onClick={() => handleSort('average')}>全科目平均点{getSortIcon('average')}</th>
+						{allSubjects.map((subject) => (
+							<th key={subject}>{subject}</th>
+						))}
 					</tr>
 				</thead>
 				<tbody>
@@ -130,6 +149,10 @@ export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => 
 							<td>{data.studentName}</td>
 							<td>{data.grade}</td>
 							<td>{data.average.toFixed(1)}</td>
+							{allSubjects.map((subject) => {
+								const score = getSubjectScore(data.grades, subject)
+								return <td key={subject}>{score !== null ? score : '-'}</td>
+							})}
 						</tr>
 					))}
 				</tbody>
