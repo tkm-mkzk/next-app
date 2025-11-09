@@ -26,17 +26,23 @@ const filterGradeOptions = [
 	{ label: '要注意（平均60点未満）', value: '60-' },
 ]
 
+type SortKey = 'name' | 'grade' | 'average' | null
+type SortOrder = 'asc' | 'desc' | null
+
 export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => {
 	const [filterGrade, setFilterGrade] = useState<string>('all')
+	const [sortKey, setSortKey] = useState<SortKey>(null)
+	const [sortOrder, setSortOrder] = useState<SortOrder>(null)
 
-	const getAllSubjectsAverage = (grades: Grade[]): string => {
+	const getAllSubjectsAverage = (grades: Grade[]): number => {
+		if (grades.length === 0) return 0
 		const total = grades.reduce((sum, grade) => sum + grade.score, 0)
-		const average = (total / grades.length).toFixed(1)
+		const average = total / grades.length
 
 		return average
 	}
 
-	const filteredData = useMemo(() => {
+	const filteredAndSortedData = useMemo(() => {
 		// 全科目平均点をinitialDataに追加
 		const initialDataWithAverage = initialData.map((data) => ({
 			...data,
@@ -46,17 +52,56 @@ export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => 
 		let filtered = initialDataWithAverage
 		switch (filterGrade) {
 			case '80+':
-				filtered = initialDataWithAverage.filter((data) => Number(data.average) >= 80)
+				filtered = initialDataWithAverage.filter((data) => data.average >= 80)
 				break
 			case '60+':
-				filtered = initialDataWithAverage.filter((data) => Number(data.average) >= 60)
+				filtered = initialDataWithAverage.filter((data) => data.average >= 60)
 				break
 			case '60-':
-				filtered = initialDataWithAverage.filter((data) => Number(data.average) <= 60)
+				filtered = initialDataWithAverage.filter((data) => data.average < 60)
 		}
 
-		return filtered
-	}, [initialData, filterGrade])
+		if (!sortKey || !sortOrder) {
+			return filtered
+		}
+
+		return [...filtered].sort((a, b) => {
+			let compareValue = 0
+			switch (sortKey) {
+				case 'name':
+					compareValue = a.studentName.localeCompare(b.studentName)
+					break
+				case 'grade':
+					compareValue = a.grade.localeCompare(b.grade)
+					break
+				case 'average':
+					compareValue = a.average - b.average
+					break
+			}
+			return sortOrder === 'asc' ? compareValue : -compareValue
+		})
+	}, [initialData, filterGrade, sortKey, sortOrder])
+
+	const getSortIcon = (key: SortKey) => {
+		if (sortKey !== key) return ''
+		if (sortOrder === 'asc') return '↑'
+		if (sortOrder === 'desc') return '↓'
+		return ''
+	}
+
+	const handleSort = (key: SortKey) => {
+		if (sortKey !== key) {
+			setSortKey(key)
+			setSortOrder('desc')
+		} else {
+			if (sortOrder === 'desc') {
+				setSortOrder('asc')
+			} else if (sortOrder === 'asc') {
+				setSortKey(null)
+				setSortOrder(null)
+			}
+		}
+	}
 
 	return (
 		<div className={styles.container}>
@@ -74,19 +119,17 @@ export const StudentGradesDashboard = ({ initialData }: GradeDashboardProps) => 
 			<table className={styles.table}>
 				<thead>
 					<tr>
-						<th>ID</th>
-						<th>名前</th>
-						<th>学年</th>
-						<th>全科目平均点</th>
+						<th onClick={() => handleSort('name')}>名前{getSortIcon('name')}</th>
+						<th onClick={() => handleSort('grade')}>学年{getSortIcon('grade')}</th>
+						<th onClick={() => handleSort('average')}>全科目平均点{getSortIcon('average')}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{filteredData.map((student) => (
-						<tr key={student.studentId}>
-							<td>{student.studentId}</td>
-							<td>{student.studentName}</td>
-							<td>{student.grade}</td>
-							<td>{student.average}</td>
+					{filteredAndSortedData.map((data) => (
+						<tr key={data.studentId}>
+							<td>{data.studentName}</td>
+							<td>{data.grade}</td>
+							<td>{data.average.toFixed(1)}</td>
 						</tr>
 					))}
 				</tbody>
